@@ -48,5 +48,7 @@ node_modules/
 
 # remove git history
 .git
-
 .github/
+
+# Python test files
+__pycache__/
