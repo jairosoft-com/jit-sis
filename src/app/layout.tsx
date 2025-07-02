@@ -1,3 +1,4 @@
+
 import { TempoInit } from "@/components/tempo-init";
 import { AuthProvider } from "@/contexts/AuthContext";
 import type { Metadata } from "next";

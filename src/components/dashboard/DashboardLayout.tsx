@@ -34,6 +34,12 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface NavItem {
   name: string;
@@ -60,6 +66,8 @@ export function DashboardLayout({
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  
   
   if (!user) {
     return null; // or redirect to login
@@ -73,6 +81,12 @@ export function DashboardLayout({
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
+
+  const toggleCollapse = () => {
+    setIsCollapsed(!isCollapsed);
+  };
+  
+  const sidebarWidth = isCollapsed ? 'w-16' : 'w-64';
 
   // Define navigation items based on user role
   const navigation: NavItem[] = [
@@ -132,7 +146,8 @@ export function DashboardLayout({
   );
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <TooltipProvider>
+      <div className="min-h-screen bg-background flex">
       {/* Mobile sidebar toggle */}
       <div className="lg:hidden fixed top-4 left-4 z-50">
         <Button variant="outline" size="icon" onClick={toggleSidebar}>
@@ -147,73 +162,116 @@ export function DashboardLayout({
       {/* Sidebar */}
       <div
         className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"} 
-          fixed lg:static lg:translate-x-0 z-40 w-64 h-full bg-card border-r transition-transform duration-200 ease-in-out`}
+          fixed lg:static lg:translate-x-0 z-40 ${sidebarWidth} h-full bg-card border-r transition-all duration-300 ease-in-out`}
       >
         <div className="flex flex-col h-full">
           {/* Logo and school name */}
-          <div className="p-6 border-b">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-xl">
-                JIT
-              </div>
-              <div>
-                <h1 className="font-bold text-lg">JIT.edu.ph</h1>
-                <p className="text-xs text-muted-foreground">
+          <div className={`p-4 border-b flex flex-col items-center ${isCollapsed ? 'space-y-4' : 'space-y-6'}`}>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 hidden lg:flex self-end"
+              onClick={toggleCollapse}
+            >
+              {isCollapsed ? (
+                <Menu className="h-4 w-4" />
+              ) : (
+                <X className="h-4 w-4" />
+              )}
+            </Button>
+            
+            {!isCollapsed ? (
+              <div className="flex flex-col items-center w-full">
+                <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-2xl mb-2">
+                  JIT
+                </div>
+                <h1 className="font-bold text-lg text-center">JIT.edu.ph</h1>
+                <p className="text-xs text-muted-foreground text-center">
                   Student Information System
                 </p>
               </div>
-            </div>
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-xl">
+                JIT
+              </div>
+            )}
           </div>
 
           {/* User profile */}
-          <div className="flex items-center space-x-3 border-b border-gray-200 p-4">
-            <Avatar>
+          <div className={`flex items-center ${isCollapsed ? 'justify-center p-2' : 'space-x-3 p-4'} border-b border-gray-200`}>
+            <Avatar className={isCollapsed ? 'h-8 w-8' : ''}>
               <AvatarImage src={`/avatars/${user.id}.png`} alt={user.name} />
               <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
             </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="truncate font-medium">{user.name}</p>
-              <p className="truncate text-sm text-gray-500">{user.role}</p>
-            </div>
+            {!isCollapsed && (
+              <div className="flex-1 min-w-0">
+                <p className="truncate font-medium">{user.name}</p>
+                <p className="truncate text-sm text-gray-500">{user.role}</p>
+              </div>
+            )}
           </div>
 
           {/* Navigation */}
-          <nav className="mt-4 px-2 flex-1 overflow-y-auto">
-            <ul className="space-y-1">
-              {filteredNavigation.map((item) => (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      "group flex items-center rounded-md px-3 py-2 text-sm font-medium",
-                      pathname === item.href
-                        ? "bg-primary/10 text-primary"
-                        : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-                    )}
-                  >
-                    <span className={cn(
-                      "mr-3 flex-shrink-0",
-                      pathname === item.href ? "text-primary" : "text-gray-400 group-hover:text-gray-500"
-                    )}>
-                      {item.icon}
-                    </span>
-                    <span>{item.name}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
+          <TooltipProvider>
+            <nav className="mt-4 px-2 flex-1 overflow-y-auto">
+              <ul className="space-y-1">
+                {filteredNavigation.map((item) => (
+                  <li key={item.href}>
+                    <Tooltip delayDuration={100}>
+                      <TooltipTrigger asChild>
+                        <Link
+                          href={item.href}
+                          className={cn(
+                            "group flex items-center rounded-md px-3 py-2 text-sm font-medium",
+                            pathname === item.href
+                              ? "bg-primary/10 text-primary"
+                              : "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
+                            isCollapsed ? "justify-center px-0" : ""
+                          )}
+                        >
+                          <span className={cn(
+                            "flex-shrink-0",
+                            pathname === item.href 
+                              ? "text-primary" 
+                              : "text-gray-400 group-hover:text-gray-500",
+                            !isCollapsed && "mr-3"
+                          )}>
+                            {item.icon}
+                          </span>
+                          {!isCollapsed && <span>{item.name}</span>}
+                        </Link>
+                      </TooltipTrigger>
+                      {isCollapsed && (
+                        <TooltipContent side="right" className="ml-2">
+                          {item.name}
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          </TooltipProvider>
           
           {/* Logout button at bottom */}
-          <div className="p-4 border-t">
-            <Button
-              variant="ghost"
-              className="w-full justify-start text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-              onClick={handleLogout}
-            >
-              <LogOut className="mr-3 h-5 w-5 text-gray-400" />
-              <span>Log out</span>
-            </Button>
+          <div className={`p-4 border-t ${isCollapsed ? 'flex justify-center' : ''}`}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={`flex items-center justify-start ${isCollapsed ? 'w-10 h-10 p-0 justify-center' : 'w-full'}`}
+                  onClick={handleLogout}
+                >
+                  <LogOut className="h-4 w-4" />
+                  {!isCollapsed && <span className="ml-2">Logout</span>}
+                </Button>
+              </TooltipTrigger>
+              {isCollapsed && (
+                <TooltipContent side="right" className="ml-2">
+                  Logout
+                </TooltipContent>
+              )}
+            </Tooltip>
           </div>
         </div>
       </div>
@@ -281,7 +339,8 @@ export function DashboardLayout({
         <main className="flex-1 overflow-y-auto bg-gray-50 p-4 md:p-6">
           {children}
         </main>
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }
