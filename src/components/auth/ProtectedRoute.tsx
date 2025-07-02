@@ -17,7 +17,7 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
     const userRole = localStorage.getItem('userRole');
     
     if (!isAuthenticated) {
-      router.push('/login');
+      router.push('/');
       return;
     }
 
