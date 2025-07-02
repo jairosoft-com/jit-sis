@@ -25,7 +25,7 @@ export type User = z.infer<typeof userSchema>;
 export async function getUsers(): Promise<User[]> {
   const url = `${process.env.SIS_API}/users`;
 
-  if (!process.env.SIS_API) {
+  if (!process.env.SIS_API) { 
     console.log('SIS_API environment variable is not set. Returning empty array.');
     return [];
   }
