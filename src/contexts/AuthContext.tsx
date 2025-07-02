@@ -16,7 +16,7 @@ export interface User {
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  isLoading: boolean;
+  loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
 }
@@ -25,12 +25,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
     // Check if user is logged in on initial load
     const checkAuth = async () => {
+      setLoading(true);
       try {
         // In a real app, you would verify the session/token with your backend
         const storedUser = localStorage.getItem('user');
@@ -40,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         console.error('Authentication check failed:', error);
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
@@ -48,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
+    setLoading(true);
     try {
       // In a real app, you would make an API call to your backend
       // const response = await fetch('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
@@ -95,6 +97,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Login failed:', error);
       throw new Error('Login failed. Please check your credentials and try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -102,14 +106,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     localStorage.removeItem('user');
     localStorage.removeItem('isAuthenticated');
-    router.push('/login');
+    router.push('/');
     router.refresh(); // Ensure the page updates with the new auth state
   };
 
   const value = {
     user,
     isAuthenticated: !!user,
-    isLoading,
+    loading,
     login,
     logout,
   };

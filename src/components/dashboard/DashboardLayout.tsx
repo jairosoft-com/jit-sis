@@ -75,7 +75,7 @@ export function DashboardLayout({
 
   const handleLogout = () => {
     logout();
-    router.push("/login");
+    router.push("/");
   };
 
   const toggleSidebar = () => {
