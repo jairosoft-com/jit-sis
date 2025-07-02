@@ -18,19 +18,23 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface LoginFormProps {
   className?: string;
   onSuccess?: () => void;
+  redirectTo?: string;
 }
 
 export default function LoginForm({
   className,
   onSuccess,
+  redirectTo = "/dashboard",
 }: LoginFormProps = {}) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const { login } = useAuth();
   const router = useRouter();
 
   const [formData, setFormData] = useState({
@@ -59,48 +63,20 @@ export default function LoginForm({
         throw new Error("Please enter both email and password");
       }
 
-      // This would be replaced with actual API call in production
-      // Simulating API call with timeout
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Mock authentication logic - in production this would call your authentication API
-      if (
-        formData.email === "admin@jit.edu.ph" &&
-        formData.password === "admin"
-      ) {
-        // Redirect to admin dashboard
-        if (onSuccess) {
-          onSuccess();
-        } else {
-          router.push("/dashboard");
-        }
-      } else if (
-        formData.email === "officer@jit.edu.ph" &&
-        formData.password === "officer"
-      ) {
-        // Redirect to admissions officer dashboard
-        if (onSuccess) {
-          onSuccess();
-        } else {
-          router.push("/dashboard");
-        }
-      } else if (
-        formData.email === "clerk@jit.edu.ph" &&
-        formData.password === "clerk"
-      ) {
-        // Redirect to data entry clerk dashboard
-        if (onSuccess) {
-          onSuccess();
-        } else {
-          router.push("/dashboard");
-        }
+      // Call the login function from AuthContext
+      await login(formData.email, formData.password);
+      
+      // If we have an onSuccess callback, call it
+      if (onSuccess) {
+        onSuccess();
       } else {
-        throw new Error("Invalid email or password");
+        // Otherwise, redirect to the specified route or dashboard
+        router.push(redirectTo);
       }
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "An unexpected error occurred",
-      );
+      const errorMessage = err instanceof Error ? err.message : "An error occurred during login";
+      setError(errorMessage);
+      console.error('Login error:', err);
     } finally {
       setIsLoading(false);
     }
