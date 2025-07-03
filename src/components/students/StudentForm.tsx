@@ -95,7 +95,6 @@ const StudentForm = ({
 
   // Mock function to simulate form submission
   const handleFormSubmit = (data: StudentFormData) => {
-    console.log("Form submitted with data:", data);
 
     // Simulate API call
     setTimeout(() => {
