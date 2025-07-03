@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { toast } from 'sonner';
-import { User, updateUser } from './actions';
+import { User, updateUser, getUsers } from './actions';
 import ViewUserModal from './ViewUserModal';
 import EditUserModal from './EditUserModal';
 import { Button } from '@/components/ui/button';
@@ -85,6 +85,11 @@ export default function UsersTable({ users }: UsersTableProps) {
     setSelectedUser(null);
   };
 
+  const fetchUsers = async () => {
+    const freshUsers = await getUsers();
+    setTableUsers(freshUsers);
+  };
+
   const handleSaveUser = async (updatedUser: User) => {
     if (!selectedUser?.id) {
       toast.error('Cannot update user without an ID.');
@@ -92,20 +97,11 @@ export default function UsersTable({ users }: UsersTableProps) {
     }
 
     const userToUpdate = { ...updatedUser, id: selectedUser.id };
-
     const result = await updateUser(userToUpdate);
 
     if (result.success) {
       toast.success(result.message);
-      if (result.data) {
-        const updatedUsers = tableUsers.map(user => {
-          if (user.id === userToUpdate.id) {
-            return { ...user, ...result.data, id: user.id };
-          }
-          return user;
-        });
-        setTableUsers(updatedUsers);
-      }
+      await fetchUsers();
     } else {
       toast.error(result.message);
     }
