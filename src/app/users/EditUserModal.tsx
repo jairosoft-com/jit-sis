@@ -13,70 +13,104 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { User } from './actions';
+import { toast } from 'sonner';
+import { User, CreateUser } from './actions';
 
 interface EditUserModalProps {
-  user: User | null;
+  mode: 'add' | 'edit';
+  user?: User | null;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (updatedUser: User) => void;
+  onSave: (userData: User | CreateUser) => void;
 }
 
-export default function EditUserModal({ user, isOpen, onClose, onSave }: EditUserModalProps) {
-  const [formData, setFormData] = useState<User | null>(null);
+const defaultState = {
+  first_name: '',
+  last_name: '',
+  email: '',
+  username: '',
+  role: 'Data Entry Clerk',
+  status: 'Active',
+  password: '',
+};
+
+export default function EditUserModal({ mode, user, isOpen, onClose, onSave }: EditUserModalProps) {
+  const [formData, setFormData] = useState<Partial<User> & Partial<CreateUser>>({});
 
   useEffect(() => {
-    setFormData(user);
-  }, [user]);
-
-  if (!formData) {
-    return null;
-  }
+    if (isOpen) {
+      if (mode === 'edit' && user) {
+        setFormData(user);
+      } else {
+        setFormData(defaultState);
+      }
+    }
+  }, [isOpen, mode, user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => (prev ? { ...prev, [name]: value } : null));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleRoleChange = (value: string) => {
-    setFormData(prev => (prev ? { ...prev, role: value } : null));
-  };
-
-  const handleStatusChange = (value: string) => {
-    setFormData(prev => (prev ? { ...prev, status: value } : null));
+  const handleSelectChange = (name: 'role' | 'status') => (value: string) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = () => {
-    if (formData) {
-      onSave(formData);
+    const requiredFields: (keyof CreateUser)[] = ['first_name', 'last_name', 'email', 'username', 'role', 'status'];
+    if (mode === 'add') {
+      requiredFields.push('password');
     }
+
+    const missingFields = requiredFields.filter(field => !formData[field]);
+
+    if (missingFields.length > 0) {
+      toast.error(`Please fill in all required fields: ${missingFields.join(', ')}`);
+      return;
+    }
+
+    onSave(formData as User | CreateUser);
   };
+
+  const isEditMode = mode === 'edit';
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Edit User</DialogTitle>
+          <DialogTitle>{isEditMode ? 'Edit User' : 'Add New User'}</DialogTitle>
           <DialogDescription>
-            Make changes to the user profile here. Click save when you're done.
+            {isEditMode
+              ? "Make changes to the user profile here. Click save when you're done."
+              : "Fill in the details to create a new user. Click save when you're done."}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="first_name" className="text-right">First Name</Label>
-            <Input id="first_name" name="first_name" value={formData.first_name} onChange={handleChange} className="col-span-3" />
+            <Input id="first_name" name="first_name" value={formData.first_name || ''} onChange={handleChange} className="col-span-3" />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="last_name" className="text-right">Last Name</Label>
-            <Input id="last_name" name="last_name" value={formData.last_name} onChange={handleChange} className="col-span-3" />
+            <Input id="last_name" name="last_name" value={formData.last_name || ''} onChange={handleChange} className="col-span-3" />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="username" className="text-right">Username</Label>
+            <Input id="username" name="username" value={formData.username || ''} onChange={handleChange} className="col-span-3" />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="email" className="text-right">Email</Label>
-            <Input id="email" name="email" type="email" value={formData.email} onChange={handleChange} className="col-span-3" />
+            <Input id="email" name="email" type="email" value={formData.email || ''} onChange={handleChange} className="col-span-3" />
           </div>
+          {!isEditMode && (
+             <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="password" className="text-right">Password</Label>
+                <Input id="password" name="password" type="password" value={formData.password || ''} onChange={handleChange} className="col-span-3" />
+            </div>
+          )}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="role" className="text-right">Role</Label>
-            <Select name="role" value={formData.role} onValueChange={handleRoleChange}>
+            <Select name="role" value={formData.role} onValueChange={handleSelectChange('role')}>
               <SelectTrigger className="col-span-3">
                 <SelectValue placeholder="Select a role" />
               </SelectTrigger>
@@ -89,7 +123,7 @@ export default function EditUserModal({ user, isOpen, onClose, onSave }: EditUse
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="status" className="text-right">Status</Label>
-            <Select name="status" value={formData.status} onValueChange={handleStatusChange}>
+            <Select name="status" value={formData.status} onValueChange={handleSelectChange('status')}>
               <SelectTrigger className="col-span-3">
                 <SelectValue placeholder="Select a status" />
               </SelectTrigger>

@@ -19,6 +19,19 @@ const userSchema = z.object({
   updated_at: z.string(),
 });
 
+const createUserSchema = userSchema
+  .omit({
+    id: true,
+    created_at: true,
+    updated_at: true,
+    last_login: true,
+  })
+  .extend({
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+  });
+
+export type CreateUser = z.infer<typeof createUserSchema>;
+
 // Define the schema for the API response
 const apiResponseSchema = z.object({
   data: z.array(userSchema),
@@ -64,6 +77,46 @@ export async function getUsers(): Promise<User[]> {
   } catch (error) {
     console.error('Critical error in getUsers:', error);
     return [];
+  }
+}
+
+export async function createUser(user: CreateUser): Promise<{ success: boolean; message: string }> {
+  const url = `${process.env.SIS_API}/users`;
+
+  if (!process.env.SIS_API) {
+    return { success: false, message: 'SIS_API environment variable is not set.' };
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(user),
+    });
+
+    const responseText = await response.text();
+
+    if (!response.ok) {
+      console.error('Failed to create user. Server response:', responseText);
+      try {
+        const errorData = JSON.parse(responseText);
+        const message = typeof errorData.message === 'string' ? errorData.message : 'An unknown error occurred.';
+        return { success: false, message };
+      } catch (e) {
+        return { success: false, message: 'Create failed: The server returned an unreadable error.' };
+      }
+    }
+
+    const json = JSON.parse(responseText);
+    return {
+      success: true,
+      message: json.message || 'User created successfully.',
+    };
+  } catch (error) {
+    console.error('Network or unexpected error in createUser:', error);
+    return { success: false, message: 'An unexpected network error occurred.' };
   }
 }
 

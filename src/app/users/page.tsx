@@ -20,10 +20,7 @@ export default async function UsersPage() {
           <h1 className="text-3xl font-bold">Users</h1>
           <p className="text-muted-foreground">Manage system users and permissions</p>
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Add User
-        </Button>
+
       </div>
       
       <UsersTable users={users} />

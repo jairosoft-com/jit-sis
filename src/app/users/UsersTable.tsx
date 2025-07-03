@@ -2,9 +2,10 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { toast } from 'sonner';
-import { User, updateUser, getUsers } from './actions';
+import { User, updateUser, getUsers, createUser, CreateUser } from './actions';
 import ViewUserModal from './ViewUserModal';
 import EditUserModal from './EditUserModal';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, Eye, Pencil } from 'lucide-react';
 import {
@@ -35,6 +36,7 @@ export default function UsersTable({ users }: UsersTableProps) {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<'add' | 'edit'>('edit');
   const [tableUsers, setTableUsers] = useState<User[]>(users);
 
   useEffect(() => {
@@ -74,8 +76,14 @@ export default function UsersTable({ users }: UsersTableProps) {
   };
 
   const handleEditUser = (user: User) => {
-
+    setModalMode('edit');
     setSelectedUser(user);
+    setIsEditModalOpen(true);
+  };
+
+  const handleAddUser = () => {
+    setModalMode('add');
+    setSelectedUser(null);
     setIsEditModalOpen(true);
   };
 
@@ -90,14 +98,13 @@ export default function UsersTable({ users }: UsersTableProps) {
     setTableUsers(freshUsers);
   };
 
-  const handleSaveUser = async (updatedUser: User) => {
-    if (!selectedUser?.id) {
-      toast.error('Cannot update user without an ID.');
-      return;
+  const handleSaveUser = async (userData: User | CreateUser) => {
+    let result;
+    if (modalMode === 'edit' && 'id' in userData) {
+      result = await updateUser(userData as User);
+    } else {
+      result = await createUser(userData as CreateUser);
     }
-
-    const userToUpdate = { ...updatedUser, id: selectedUser.id };
-    const result = await updateUser(userToUpdate);
 
     if (result.success) {
       toast.success(result.message);
@@ -110,6 +117,13 @@ export default function UsersTable({ users }: UsersTableProps) {
 
   return (
     <div className="bg-card rounded-lg border overflow-hidden">
+      <div className="p-4 border-b flex items-center justify-between">
+        <h2 className="text-xl font-semibold">User List</h2>
+        <Button onClick={handleAddUser}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add User
+        </Button>
+      </div>
       <div className="p-4 border-b">
         <div className="flex items-center justify-between">
           <div className="flex-1 max-w-sm">
@@ -217,7 +231,7 @@ export default function UsersTable({ users }: UsersTableProps) {
         </div>
       </div>
       <ViewUserModal user={selectedUser} isOpen={isViewModalOpen} onClose={handleCloseModals} />
-      <EditUserModal user={selectedUser} isOpen={isEditModalOpen} onClose={handleCloseModals} onSave={handleSaveUser} />
+      <EditUserModal mode={modalMode} user={selectedUser} isOpen={isEditModalOpen} onClose={handleCloseModals} onSave={handleSaveUser} />
     </div>
   );
 }
