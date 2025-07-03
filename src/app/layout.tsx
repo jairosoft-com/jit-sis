@@ -1,4 +1,5 @@
 
+import { Toaster } from 'sonner';
 import { TempoInit } from "@/components/tempo-init";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { LayoutProvider } from '@/components/LayoutProvider';
@@ -27,6 +28,7 @@ export default function RootLayout({
         <AuthProvider>
           <LayoutProvider>{children}</LayoutProvider>
           <TempoInit />
+          <Toaster />
         </AuthProvider>
       </body>
     </html>

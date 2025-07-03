@@ -1,35 +1,63 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { User } from './actions';
+import { useState, useMemo, useEffect } from 'react';
+import { toast } from 'sonner';
+import { User, updateUser, getUsers, createUser, CreateUser } from './actions';
+import ViewUserModal from './ViewUserModal';
+import EditUserModal from './EditUserModal';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Eye, Pencil } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface UsersTableProps {
   users: User[];
 }
+
+const formatDate = (dateString: string | null | undefined) => {
+  if (!dateString) return 'N/A';
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) {
+    return 'Invalid Date';
+  }
+  return date.toLocaleString();
+};
 
 export default function UsersTable({ users }: UsersTableProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<'add' | 'edit'>('edit');
+  const [tableUsers, setTableUsers] = useState<User[]>(users);
+
+  useEffect(() => {
+    setTableUsers(users);
+  }, [users]);
 
   const filteredUsers = useMemo(() => {
-    return users
+    return tableUsers
       .filter(user => {
         const searchLower = searchTerm.toLowerCase();
-        return (
+        const match = 
           user.first_name.toLowerCase().includes(searchLower) ||
           user.last_name.toLowerCase().includes(searchLower) ||
           user.email.toLowerCase().includes(searchLower) ||
-          user.username.toLowerCase().includes(searchLower)
-        );
+          user.username.toLowerCase().includes(searchLower);
+        return match;
       })
       .filter(user => {
         return roleFilter ? user.role === roleFilter : true;
       });
-  }, [users, searchTerm, roleFilter]);
+  }, [tableUsers, searchTerm, roleFilter]);
 
   const paginatedUsers = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -42,8 +70,60 @@ export default function UsersTable({ users }: UsersTableProps) {
     setCurrentPage(page);
   };
 
+  const handleViewUser = (user: User) => {
+    setSelectedUser(user);
+    setIsViewModalOpen(true);
+  };
+
+  const handleEditUser = (user: User) => {
+    setModalMode('edit');
+    setSelectedUser(user);
+    setIsEditModalOpen(true);
+  };
+
+  const handleAddUser = () => {
+    setModalMode('add');
+    setSelectedUser(null);
+    setIsEditModalOpen(true);
+  };
+
+  const handleCloseModals = () => {
+    setIsViewModalOpen(false);
+    setIsEditModalOpen(false);
+    setSelectedUser(null);
+  };
+
+  const fetchUsers = async () => {
+    const freshUsers = await getUsers();
+    setTableUsers(freshUsers);
+  };
+
+  const handleSaveUser = async (userData: User | CreateUser) => {
+    let result;
+    if (modalMode === 'edit' && 'id' in userData) {
+      result = await updateUser(userData as User);
+    } else {
+      result = await createUser(userData as CreateUser);
+    }
+
+    if (result.success) {
+      toast.success(result.message);
+      await fetchUsers();
+    } else {
+      toast.error(result.message);
+    }
+    handleCloseModals();
+  };
+
   return (
     <div className="bg-card rounded-lg border overflow-hidden">
+      <div className="p-4 border-b flex items-center justify-between">
+        <h2 className="text-xl font-semibold">User List</h2>
+        <Button onClick={handleAddUser}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add User
+        </Button>
+      </div>
       <div className="p-4 border-b">
         <div className="flex items-center justify-between">
           <div className="flex-1 max-w-sm">
@@ -83,30 +163,49 @@ export default function UsersTable({ users }: UsersTableProps) {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {paginatedUsers.map((user) => (
-              <tr key={user.username} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="font-medium text-gray-900">{`${user.first_name} ${user.last_name}`}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-gray-500">{user.email}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                    {user.role}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.status.toLowerCase() === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                    {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(user.last_login).toLocaleString()}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <Button variant="ghost" size="icon">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </td>
-              </tr>
-            ))}
+            {paginatedUsers.map((user) => {
+              const statusDisplay = user.status.charAt(0).toUpperCase() + user.status.slice(1);
+              const statusClass = user.status.toLowerCase() === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
+
+              return (
+                <tr key={user.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="font-medium text-gray-900">{`${user.first_name} ${user.last_name}`}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-gray-500">{user.email}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                      {user.role}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}`}>
+                      {statusDisplay}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(user.last_login)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleViewUser(user)}>
+                          <Eye className="mr-2 h-4 w-4" />
+                          View
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEditUser(user)}>
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -131,6 +230,8 @@ export default function UsersTable({ users }: UsersTableProps) {
           </div>
         </div>
       </div>
+      <ViewUserModal user={selectedUser} isOpen={isViewModalOpen} onClose={handleCloseModals} />
+      <EditUserModal mode={modalMode} user={selectedUser} isOpen={isEditModalOpen} onClose={handleCloseModals} onSave={handleSaveUser} />
     </div>
   );
 }
