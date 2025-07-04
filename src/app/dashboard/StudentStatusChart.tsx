@@ -3,26 +3,26 @@
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, LabelList } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-interface UserRoleChartProps {
-  data: { role: string; count: number }[];
+interface StudentStatusChartProps {
+  data: { status: string; count: number }[];
 }
 
-export default function UserRoleChart({ data }: UserRoleChartProps) {
+export default function StudentStatusChart({ data }: StudentStatusChartProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>User Role Distribution</CardTitle>
+        <CardTitle>Student Status Distribution</CardTitle>
       </CardHeader>
       <CardContent>
         <div style={{ height: 300 }}>
           {data && data.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data}>
-                <XAxis dataKey="role" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                <XAxis dataKey="status" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
                 <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="count" fill="#8884d8" radius={[4, 4, 0, 0]}>
+                <Bar dataKey="count" fill="#82ca9d" radius={[4, 4, 0, 0]}>
                   <LabelList dataKey="count" position="top" style={{ fill: '#666' }} />
                 </Bar>
               </BarChart>
