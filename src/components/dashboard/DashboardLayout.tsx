@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
@@ -40,6 +40,52 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Skeleton } from "@/components/ui/skeleton";
+
+// Skeleton Components
+const UserProfileSkeleton = ({ isCollapsed }: { isCollapsed: boolean }) => (
+  <div className={`flex items-center ${isCollapsed ? 'justify-center p-2' : 'space-x-3 p-4'} border-b border-gray-200`}>
+    <Skeleton className={`${isCollapsed ? 'h-8 w-8' : 'h-10 w-10'} rounded-full`} />
+    {!isCollapsed && (
+      <div className="flex-1 min-w-0 space-y-2">
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-3 w-1/2" />
+      </div>
+    )}
+  </div>
+);
+
+const NavigationItemSkeleton = ({ isCollapsed }: { isCollapsed: boolean }) => (
+  <div className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'px-3'} py-2`}>
+    <Skeleton className="h-5 w-5 rounded-sm" />
+    {!isCollapsed && <Skeleton className="ml-3 h-4 w-24" />}
+  </div>
+);
+
+const MainContentSkeleton = () => (
+  <div className="space-y-6 p-4">
+    <div className="flex items-center justify-between">
+      <Skeleton className="h-8 w-48" />
+      <div className="flex space-x-2">
+        <Skeleton className="h-9 w-24" />
+        <Skeleton className="h-9 w-32" />
+      </div>
+    </div>
+    
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      {[1, 2, 3, 4].map((item) => (
+        <Skeleton key={item} className="h-32 rounded-lg" />
+      ))}
+    </div>
+    
+    <div className="grid gap-6 md:grid-cols-2">
+      <Skeleton className="h-80 rounded-lg" />
+      <Skeleton className="h-80 rounded-lg" />
+    </div>
+    
+    <Skeleton className="h-96 w-full rounded-lg" />
+  </div>
+);
 
 interface NavItem {
   name: string;
@@ -67,7 +113,16 @@ export function DashboardLayout({
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   
+  useEffect(() => {
+    // Simulate loading data
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1500);
+    
+    return () => clearTimeout(timer);
+  }, []);
   
   if (!user) {
     return null; // or redirect to login
@@ -198,57 +253,71 @@ export function DashboardLayout({
           </div>
 
           {/* User profile */}
-          <div className={`flex items-center ${isCollapsed ? 'justify-center p-2' : 'space-x-3 p-4'} border-b border-gray-200`}>
-            <Avatar className={isCollapsed ? 'h-8 w-8' : ''}>
-              <AvatarImage src={`/avatars/${user.id}.png`} alt={user.name} />
-              <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-            </Avatar>
-            {!isCollapsed && (
-              <div className="flex-1 min-w-0">
-                <p className="truncate font-medium">{user.name}</p>
-                <p className="truncate text-sm text-gray-500">{user.role}</p>
-              </div>
-            )}
-          </div>
+          {isLoading ? (
+            <UserProfileSkeleton isCollapsed={isCollapsed} />
+          ) : (
+            <div className={`flex items-center ${isCollapsed ? 'justify-center p-2' : 'space-x-3 p-4'} border-b border-gray-200`}>
+              <Avatar className={isCollapsed ? 'h-8 w-8' : ''}>
+                <AvatarImage src={`/avatars/${user.id}.png`} alt={user.name} />
+                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+              {!isCollapsed && (
+                <div className="flex-1 min-w-0">
+                  <p className="truncate font-medium">{user.name}</p>
+                  <p className="truncate text-sm text-gray-500">{user.role}</p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Navigation */}
           <TooltipProvider>
             <nav className="mt-4 px-2 flex-1 overflow-y-auto">
               <ul className="space-y-1">
-                {filteredNavigation.map((item) => (
-                  <li key={item.href}>
-                    <Tooltip delayDuration={100}>
-                      <TooltipTrigger asChild>
-                        <Link
-                          href={item.href}
-                          className={cn(
-                            "group flex items-center rounded-md px-3 py-2 text-sm font-medium",
-                            pathname === item.href
-                              ? "bg-primary/10 text-primary"
-                              : "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
-                            isCollapsed ? "justify-center px-0" : ""
-                          )}
-                        >
-                          <span className={cn(
-                            "flex-shrink-0",
-                            pathname === item.href 
-                              ? "text-primary" 
-                              : "text-gray-400 group-hover:text-gray-500",
-                            !isCollapsed && "mr-3"
-                          )}>
-                            {item.icon}
-                          </span>
-                          {!isCollapsed && <span>{item.name}</span>}
-                        </Link>
-                      </TooltipTrigger>
-                      {isCollapsed && (
-                        <TooltipContent side="right" className="ml-2">
-                          {item.name}
-                        </TooltipContent>
-                      )}
-                    </Tooltip>
-                  </li>
-                ))}
+                {isLoading ? (
+                  // Skeleton navigation items
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <li key={`skeleton-nav-${index}`}>
+                      <NavigationItemSkeleton isCollapsed={isCollapsed} />
+                    </li>
+                  ))
+                ) : (
+                  // Actual navigation items
+                  filteredNavigation.map((item) => (
+                    <li key={item.href}>
+                      <Tooltip delayDuration={100}>
+                        <TooltipTrigger asChild>
+                          <Link
+                            href={item.href}
+                            className={cn(
+                              "group flex items-center rounded-md px-3 py-2 text-sm font-medium",
+                              pathname === item.href
+                                ? "bg-primary/10 text-primary"
+                                : "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
+                              isCollapsed ? "justify-center px-0" : ""
+                            )}
+                          >
+                            <span className={cn(
+                              "flex-shrink-0",
+                              pathname === item.href 
+                                ? "text-primary" 
+                                : "text-gray-400 group-hover:text-gray-500",
+                              !isCollapsed && "mr-3"
+                            )}>
+                              {item.icon}
+                            </span>
+                            {!isCollapsed && <span>{item.name}</span>}
+                          </Link>
+                        </TooltipTrigger>
+                        {isCollapsed && (
+                          <TooltipContent side="right" className="ml-2">
+                            {item.name}
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
+                    </li>
+                  ))
+                )}
               </ul>
             </nav>
           </TooltipProvider>
@@ -336,8 +405,14 @@ export function DashboardLayout({
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto bg-gray-50 p-4 md:p-6">
-          {children}
+        <main className="flex-1 overflow-y-auto bg-gray-50">
+          {isLoading ? (
+            <MainContentSkeleton />
+          ) : (
+            <div className="p-4 md:p-6">
+              {children}
+            </div>
+          )}
         </main>
         </div>
       </div>
