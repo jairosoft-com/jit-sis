@@ -44,7 +44,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 // Skeleton Components
 const UserProfileSkeleton = ({ isCollapsed }: { isCollapsed: boolean }) => (
-  <div className={`flex items-center ${isCollapsed ? 'justify-center p-2' : 'space-x-3 p-4'} border-b border-gray-200`}>
+  <div data-testid="user-profile-skeleton" className={`flex items-center ${isCollapsed ? 'justify-center p-2' : 'space-x-3 p-4'} border-b border-gray-200`}>
     <Skeleton className={`${isCollapsed ? 'h-8 w-8' : 'h-10 w-10'} rounded-full`} />
     {!isCollapsed && (
       <div className="flex-1 min-w-0 space-y-2">
@@ -56,14 +56,14 @@ const UserProfileSkeleton = ({ isCollapsed }: { isCollapsed: boolean }) => (
 );
 
 const NavigationItemSkeleton = ({ isCollapsed }: { isCollapsed: boolean }) => (
-  <div className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'px-3'} py-2`}>
+  <div data-testid="nav-item-skeleton" className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'px-3'} py-2`}>
     <Skeleton className="h-5 w-5 rounded-sm" />
     {!isCollapsed && <Skeleton className="ml-3 h-4 w-24" />}
   </div>
 );
 
 const MainContentSkeleton = () => (
-  <div className="space-y-6 p-4">
+  <div data-testid="main-content-skeleton" className="space-y-6 p-4">
     <div className="flex items-center justify-between">
       <Skeleton className="h-8 w-48" />
       <div className="flex space-x-2">
@@ -110,22 +110,69 @@ export function DashboardLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user, logout, loading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+
   
-  useEffect(() => {
-    // Simulate loading data
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1500);
-    
-    return () => clearTimeout(timer);
-  }, []);
-  
+  if (loading) {
+    // Show a full-page skeleton loader when loading
+    return (
+      <div className="min-h-screen bg-background flex">
+        <div className={`${isCollapsed ? 'w-16' : 'w-64'} h-full bg-card border-r transition-all duration-300 ease-in-out`}>
+          <div className="flex flex-col h-full">
+            <div className={`p-4 border-b flex flex-col items-center ${isCollapsed ? 'space-y-4' : 'space-y-6'}`}>
+              <Skeleton className="h-8 w-8 hidden lg:flex self-end" />
+              {!isCollapsed ? (
+                <div className="flex flex-col items-center w-full">
+                  <Skeleton className="w-16 h-16 rounded-full mb-2" />
+                  <Skeleton className="h-5 w-24 mb-1" />
+                  <Skeleton className="h-3 w-32" />
+                </div>
+              ) : (
+                <Skeleton className="w-10 h-10 rounded-full" />
+              )}
+            </div>
+            <UserProfileSkeleton isCollapsed={isCollapsed} />
+            <nav className="mt-4 px-2 flex-1 overflow-y-auto">
+              <ul className="space-y-1">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <li key={`skeleton-nav-${index}`}>
+                    <NavigationItemSkeleton isCollapsed={isCollapsed} />
+                  </li>
+                ))}
+              </ul>
+            </nav>
+            <div className={`p-4 border-t ${isCollapsed ? 'flex justify-center' : ''}`}>
+              <Skeleton className={`${isCollapsed ? 'w-10 h-10' : 'w-full h-10'}`} />
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <header className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-4">
+            <Skeleton className="h-8 w-48" />
+            <div className="flex items-center space-x-4">
+              <Skeleton className="h-8 w-8 rounded-full" />
+              <Skeleton className="h-8 w-8 rounded-full" />
+              <Skeleton className="h-8 w-8 rounded-full" />
+            </div>
+          </header>
+          <main className="flex-1 overflow-y-auto bg-gray-50">
+            <MainContentSkeleton />
+          </main>
+        </div>
+      </div>
+    );
+  }
+
   if (!user) {
-    return null; // or redirect to login
+    // After loading, if there's still no user, render a fallback UI for better test/debug experience
+    return (
+      <div data-testid="no-user-fallback" style={{ padding: 40, textAlign: 'center' }}>
+        <h2>No user found</h2>
+        <p>You are not authorized or not logged in.</p>
+      </div>
+    );
   }
 
   const handleLogout = () => {
@@ -253,7 +300,7 @@ export function DashboardLayout({
           </div>
 
           {/* User profile */}
-          {isLoading ? (
+          {loading ? (
             <UserProfileSkeleton isCollapsed={isCollapsed} />
           ) : (
             <div className={`flex items-center ${isCollapsed ? 'justify-center p-2' : 'space-x-3 p-4'} border-b border-gray-200`}>
@@ -274,7 +321,7 @@ export function DashboardLayout({
           <TooltipProvider>
             <nav className="mt-4 px-2 flex-1 overflow-y-auto">
               <ul className="space-y-1">
-                {isLoading ? (
+                {loading ? (
                   // Skeleton navigation items
                   Array.from({ length: 5 }).map((_, index) => (
                     <li key={`skeleton-nav-${index}`}>
@@ -406,7 +453,7 @@ export function DashboardLayout({
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto bg-gray-50">
-          {isLoading ? (
+          {loading ? (
             <MainContentSkeleton />
           ) : (
             <div className="p-4 md:p-6">
