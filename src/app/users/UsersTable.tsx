@@ -1,60 +1,56 @@
-'use client';
+"use client";
 
-import { useState, useMemo, useEffect } from 'react';
-import { toast } from 'sonner';
-import { User, updateUser, getUsers, createUser, CreateUser } from './actions';
-import ViewUserModal from './ViewUserModal';
-import EditUserModal from './EditUserModal';
-import { Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Eye, Pencil } from 'lucide-react';
+import { useState, useMemo, useEffect } from "react";
+import { toast } from "sonner";
+import { User, updateUser, getUsers, createUser, CreateUser } from "./actions";
+import ViewUserModal from "./ViewUserModal";
+import EditUserModal from "./EditUserModal";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { MoreHorizontal, Eye, Pencil } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from "@/components/ui/dropdown-menu";
 
 interface UsersTableProps {
   users: User[];
 }
 
 const formatDate = (dateString: string | null | undefined) => {
-  if (!dateString) return 'N/A';
+  if (!dateString) return "N/A";
   const date = new Date(dateString);
   if (isNaN(date.getTime())) {
-    return 'Invalid Date';
+    return "Invalid Date";
   }
   return date.toLocaleString();
 };
 
 export default function UsersTable({ users }: UsersTableProps) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<'add' | 'edit'>('edit');
+  const [modalMode, setModalMode] = useState<"add" | "edit">("edit");
   const [tableUsers, setTableUsers] = useState<User[]>(users);
-
-  useEffect(() => {
-    setTableUsers(users);
-  }, [users]);
 
   const filteredUsers = useMemo(() => {
     return tableUsers
-      .filter(user => {
+      .filter((user) => {
         const searchLower = searchTerm.toLowerCase();
-        const match = 
+        const match =
           user.first_name.toLowerCase().includes(searchLower) ||
           user.last_name.toLowerCase().includes(searchLower) ||
           user.email.toLowerCase().includes(searchLower) ||
           user.username.toLowerCase().includes(searchLower);
         return match;
       })
-      .filter(user => {
+      .filter((user) => {
         return roleFilter ? user.role === roleFilter : true;
       });
   }, [tableUsers, searchTerm, roleFilter]);
@@ -76,13 +72,13 @@ export default function UsersTable({ users }: UsersTableProps) {
   };
 
   const handleEditUser = (user: User) => {
-    setModalMode('edit');
+    setModalMode("edit");
     setSelectedUser(user);
     setIsEditModalOpen(true);
   };
 
   const handleAddUser = () => {
-    setModalMode('add');
+    setModalMode("add");
     setSelectedUser(null);
     setIsEditModalOpen(true);
   };
@@ -99,20 +95,39 @@ export default function UsersTable({ users }: UsersTableProps) {
   };
 
   const handleSaveUser = async (userData: User | CreateUser) => {
-    let result;
-    if (modalMode === 'edit' && 'id' in userData) {
+    let result: any;
+    if (modalMode === "edit" && "id" in userData) {
       result = await updateUser(userData as User);
+      if (result.status === 400 || result.error) {
+        toast.error(result.error ? "Something went wrong." : result.message);
+      } else if (result.status === 200) {
+        toast.success(result.message);
+        if (result.data) {
+          setTableUsers((prev) =>
+            prev.map((u) =>
+              u.id === (selectedUser?.id ?? result.data.id) ? result.data : u
+            )
+          );
+        }
+        handleCloseModals();
+      } else {
+        toast.error(result.message || "An unknown error occurred.");
+      }
     } else {
+      // Add user mode
       result = await createUser(userData as CreateUser);
+      if (result.status === 400 || result.error) {
+        toast.error(result.error ? "Something went wrong." : result.message);
+      } else if (result.status === 200 || result.status === 201) {
+        toast.success(result.message);
+        if (result.data) {
+          setTableUsers((prev) => [result.data, ...prev]);
+        }
+        handleCloseModals();
+      } else {
+        toast.error(result.message || "An unknown error occurred.");
+      }
     }
-
-    if (result.success) {
-      toast.success(result.message);
-      await fetchUsers();
-    } else {
-      toast.error(result.message);
-    }
-    handleCloseModals();
   };
 
   return (
@@ -136,7 +151,7 @@ export default function UsersTable({ users }: UsersTableProps) {
             />
           </div>
           <div className="ml-4">
-            <select 
+            <select
               className="px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
@@ -149,41 +164,63 @@ export default function UsersTable({ users }: UsersTableProps) {
           </div>
         </div>
       </div>
-      
+
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Login</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Name
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Email
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Role
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Last Login
+              </th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {paginatedUsers.map((user) => {
-              const statusDisplay = user.status.charAt(0).toUpperCase() + user.status.slice(1);
-              const statusClass = user.status.toLowerCase() === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
+              const statusDisplay =
+                user.status.charAt(0).toUpperCase() + user.status.slice(1);
+              const statusClass =
+                user.status.toLowerCase() === "active"
+                  ? "bg-green-100 text-green-800"
+                  : "bg-gray-100 text-gray-800";
 
               return (
                 <tr key={user.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="font-medium text-gray-900">{`${user.first_name} ${user.last_name}`}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-gray-500">{user.email}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+                    {user.email}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
                       {user.role}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}`}>
+                    <span
+                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}`}
+                    >
                       {statusDisplay}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(user.last_login)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {formatDate(user.last_login)}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -212,7 +249,8 @@ export default function UsersTable({ users }: UsersTableProps) {
 
       <div className="p-4 border-t flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
-          Showing <strong>{paginatedUsers.length}</strong> of <strong>{filteredUsers.length}</strong> results
+          Showing <strong>{paginatedUsers.length}</strong> of{" "}
+          <strong>{filteredUsers.length}</strong> results
         </div>
         <div className="flex items-center space-x-2">
           <select
@@ -225,13 +263,37 @@ export default function UsersTable({ users }: UsersTableProps) {
             <option value={20}>20 per page</option>
           </select>
           <div className="flex items-center space-x-1">
-            <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>Previous</Button>
-            <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}>Next</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </Button>
           </div>
         </div>
       </div>
-      <ViewUserModal user={selectedUser} isOpen={isViewModalOpen} onClose={handleCloseModals} />
-      <EditUserModal mode={modalMode} user={selectedUser} isOpen={isEditModalOpen} onClose={handleCloseModals} onSave={handleSaveUser} />
+      <ViewUserModal
+        user={selectedUser}
+        isOpen={isViewModalOpen}
+        onClose={handleCloseModals}
+      />
+      <EditUserModal
+        mode={modalMode}
+        user={selectedUser}
+        isOpen={isEditModalOpen}
+        onClose={handleCloseModals}
+        onSave={handleSaveUser}
+      />
     </div>
   );
 }
