@@ -47,7 +47,7 @@ const UserProfileSkeleton = ({ isCollapsed }: { isCollapsed: boolean }) => (
   <div data-testid="user-profile-skeleton" className={`flex items-center ${isCollapsed ? 'justify-center p-2' : 'space-x-3 p-4'} border-b border-gray-200`}>
     <Skeleton className={`${isCollapsed ? 'h-8 w-8' : 'h-10 w-10'} rounded-full`} />
     {!isCollapsed && (
-      <div className="flex-1 min-w-0 space-y-2">
+    <div className="flex-1 min-w-0 space-y-2">
         <Skeleton className="h-4 w-3/4" />
         <Skeleton className="h-3 w-1/2" />
       </div>

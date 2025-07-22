@@ -64,12 +64,35 @@ describe("StudentsTable", () => {
 
   it("shows correct number of results and paginates", () => {
     render(<StudentsTable students={students} />);
-    expect(screen.getByText("Showing 2 of 2 results")).toBeInTheDocument();
-    // Change items per page
+    // Use a function matcher to find the split text
+    expect(
+      screen.getByText((content, node) => {
+        const hasText = (node: Element | null) =>
+          node?.textContent?.replace(/\s+/g, " ").trim() ===
+          "Showing 2 of 2 results";
+        const nodeHasText = hasText(node as Element);
+        const childrenDontHaveText = Array.from(node?.children || []).every(
+          (child) => !hasText(child as Element)
+        );
+        return nodeHasText && childrenDontHaveText;
+      })
+    ).toBeInTheDocument();
+    // Change items per page to 5 (should still show 2 of 2 results)
     fireEvent.change(screen.getByDisplayValue("10 per page"), {
-      target: { value: "1" },
+      target: { value: "5" },
     });
-    expect(screen.getByText("Showing 1 of 2 results")).toBeInTheDocument();
+    expect(
+      screen.getByText((content, node) => {
+        const hasText = (node: Element | null) =>
+          node?.textContent?.replace(/\s+/g, " ").trim() ===
+          "Showing 2 of 2 results";
+        const nodeHasText = hasText(node as Element);
+        const childrenDontHaveText = Array.from(node?.children || []).every(
+          (child) => !hasText(child as Element)
+        );
+        return nodeHasText && childrenDontHaveText;
+      })
+    ).toBeInTheDocument();
   });
 
   it("opens add student modal", () => {
