@@ -1,6 +1,6 @@
-'use server';
+"use server";
 
-import { z } from 'zod';
+import { z } from "zod";
 
 // Define the schema for a single user
 const userSchema = z.object({
@@ -27,7 +27,7 @@ const createUserSchema = userSchema
     last_login: true,
   })
   .extend({
-    password: z.string().min(8, 'Password must be at least 8 characters'),
+    password: z.string().min(8, "Password must be at least 8 characters"),
   });
 
 export type CreateUser = z.infer<typeof createUserSchema>;
@@ -50,7 +50,7 @@ export type User = z.infer<typeof userSchema>;
 export async function getUsers(): Promise<User[]> {
   const url = `${process.env.SIS_API}/users`;
 
-  if (!process.env.SIS_API) { 
+  if (!process.env.SIS_API) {
     return [];
   }
 
@@ -60,7 +60,7 @@ export async function getUsers(): Promise<User[]> {
     if (!response.ok) {
       console.error(`SIS API Error: HTTP status ${response.status}`);
       const errorText = await response.text();
-      console.error('SIS API Response Text:', errorText);
+      console.error("SIS API Response Text:", errorText);
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
@@ -69,106 +69,107 @@ export async function getUsers(): Promise<User[]> {
     const parsed = apiResponseSchema.safeParse(json);
 
     if (!parsed.success) {
-      console.error('Zod Parsing Failed:', parsed.error.issues);
+      console.error("Zod Parsing Failed:", parsed.error.issues);
       return [];
     }
 
     return parsed.data.data;
   } catch (error) {
-    console.error('Critical error in getUsers:', error);
+    console.error("Critical error in getUsers:", error);
     return [];
   }
 }
 
-export async function createUser(user: CreateUser): Promise<{ success: boolean; message: string }> {
-  const url = `${process.env.SIS_API}/users`;
+export async function createUser(
+  user: CreateUser
+): Promise<{ data?: any; status: number; message: string }> {
+  const url = `${process.env.SIS_API}/students/create`;
 
   if (!process.env.SIS_API) {
-    return { success: false, message: 'SIS_API environment variable is not set.' };
+    return {
+      status: 400,
+      message: "SIS_API environment variable is not set.",
+    };
   }
 
   try {
     const response = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(user),
     });
 
     const responseText = await response.text();
-
-    if (!response.ok) {
-      console.error('Failed to create user. Server response:', responseText);
-      try {
-        const errorData = JSON.parse(responseText);
-        const message = typeof errorData.message === 'string' ? errorData.message : 'An unknown error occurred.';
-        return { success: false, message };
-      } catch (e) {
-        return { success: false, message: 'Create failed: The server returned an unreadable error.' };
-      }
+    let json: any = {};
+    try {
+      json = JSON.parse(responseText);
+    } catch (e) {
+      // If response is not JSON, treat as error
+      return {
+        status: response.status,
+        message: "Server returned an unreadable response.",
+      };
     }
-
-    const json = JSON.parse(responseText);
     return {
-      success: true,
-      message: json.message || 'User created successfully.',
+      data: json.data,
+      status: json.status ?? response.status,
+      message: json.message ?? "",
     };
   } catch (error) {
-    console.error('Network or unexpected error in createUser:', error);
-    return { success: false, message: 'An unexpected network error occurred.' };
+    console.error("Network or unexpected error in createUser:", error);
+    return { status: 400, message: "An unexpected network error occurred." };
   }
 }
 
-export async function updateUser(user: User): Promise<{ success: boolean; message: string; data?: PartialUser }> {
-    if (!user.id) {
-    return { success: false, message: 'User ID is missing, cannot update.' };
+export async function updateUser(
+  user: User
+): Promise<{ data?: any; status: number; message: string; error?: any }> {
+  if (!user.id) {
+    return { status: 400, message: "User ID is missing, cannot update." };
   }
-  const url = `${process.env.SIS_API}/users/${user.id}`;
+  // Exclude created_at, updated_at, last_login, and id from the payload
+  const { created_at, updated_at, last_login, id, ...payload } = user;
+  const url = `${process.env.SIS_API}/users/update/${user.id}`;
 
   if (!process.env.SIS_API) {
-    return { success: false, message: 'SIS_API environment variable is not set.' };
+    return {
+      status: 400,
+      message: "SIS_API environment variable is not set.",
+    };
   }
 
-  const { id, created_at, updated_at, last_login, username, ...updateData } = user;
+  console.log("payloadd ", payload);
 
   try {
     const response = await fetch(url, {
-      method: 'PATCH',
+      method: "PATCH",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify(updateData),
+      body: JSON.stringify(payload),
     });
 
     const responseText = await response.text();
-
-    if (!response.ok) {
-      console.error('Failed to update user. Server response:', responseText);
-      try {
-        const errorData = JSON.parse(responseText);
-        const message = typeof errorData.message === 'string' ? errorData.message : 'An unknown error occurred.';
-        return { success: false, message, data: undefined };
-      } catch (e) {
-        return { success: false, message: 'Update failed: The server returned an unreadable error.', data: undefined };
-      }
-    }
-
-    // Handle successful responses
+    let json: any = {};
     try {
-      const json = JSON.parse(responseText);
-      return {
-        success: true,
-        message: json.message || 'User updated successfully.',
-        data: json.data || undefined,
-      };
+      json = JSON.parse(responseText);
     } catch (e) {
-      // This case handles a successful (2xx) response that is not JSON, or is empty.
-      return { success: true, message: 'User updated successfully.', data: undefined };
+      return {
+        status: response.status,
+        message: "Server returned an unreadable response.",
+      };
     }
-
+    console.log("Updating user:", json);
+    return {
+      data: json.data,
+      status: json.status ?? response.status,
+      message: json.message ?? "",
+      error: json.error,
+    };
   } catch (error) {
-    console.error('Network or unexpected error in updateUser:', error);
-    return { success: false, message: 'An unexpected network error occurred.' };
+    console.error("Network or unexpected error in updateUser:", error);
+    return { status: 400, message: "An unexpected network error occurred." };
   }
 }
