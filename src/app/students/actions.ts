@@ -74,93 +74,104 @@ export async function getStudents(): Promise<Student[]> {
   }
 }
 
-export async function createStudent(student: CreateStudent): Promise<{ success: boolean; message: string }> {
-  const url = `${process.env.SIS_API}/students`;
+export async function createStudent(
+  student: CreateStudent
+): Promise<{ data?: any; status: number; message: string; error?: any }> {
+    const url = `${process.env.SIS_API}/students/create`;
 
   if (!process.env.SIS_API) {
-    return { success: false, message: 'SIS_API environment variable is not set.' };
+    return {
+      status: 400,
+      message: "SIS_API environment variable is not set.",
+    };
   }
+
+  console.log('student ', student)  
 
   try {
     const response = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(student),
     });
 
     const responseText = await response.text();
-
-    if (!response.ok) {
-      console.error('Failed to create student. Server response:', responseText);
-      try {
-        const errorData = JSON.parse(responseText);
-        const message = typeof errorData.message === 'string' ? errorData.message : 'An unknown error occurred.';
-        return { success: false, message };
-      } catch (e) {
-        return { success: false, message: 'Create failed: The server returned an unreadable error.' };
-      }
+    let json: any = {};
+    try {
+      json = JSON.parse(responseText);
+    } catch (e) {
+      return {
+        status: response.status,
+        message: "Server returned an unreadable response.",
+      };
     }
 
-    const json = JSON.parse(responseText);
+    console.log('response ', json)
+
     return {
-      success: true,
-      message: json.message || 'Student created successfully.',
+      data: json.data,
+      status: json.status ?? response.status,
+      message: json.message ?? "",
+      error: json.error,
     };
   } catch (error) {
-    console.error('Network or unexpected error in createStudent:', error);
-    return { success: false, message: 'An unexpected network error occurred.' };
+    console.error("Network or unexpected error in createStudent:", error);
+    return { status: 400, message: "An unexpected network error occurred." };
   }
 }
 
-export async function updateStudent(student: Partial<Student> & { id: string }): Promise<{ success: boolean; message: string; data?: PartialStudent }> {
-  if (!student.id) {
-    return { success: false, message: 'Student ID is missing, cannot update.' };
+export async function updateStudent(
+  student: Student
+): Promise<{ data?: any; status: number; message: string; error?: any }> {
+    if (!student.id) {
+    return { status: 400, message: "Student ID is missing, cannot update." };
   }
-  const url = `${process.env.SIS_API}/students/${student.id}`;
+
+  // Exclude uneditable fields
+  const { created_at, updated_at, enrollment_date, id, ...payload } = student;
+
+  const url = `${process.env.SIS_API}/students/update/${student.id}`;
 
   if (!process.env.SIS_API) {
-    return { success: false, message: 'SIS_API environment variable is not set.' };
+    return {
+      status: 400,
+      message: "SIS_API environment variable is not set.",
+    };
   }
-
-  const { id, created_at, updated_at, ...updateData } = student;
 
   try {
     const response = await fetch(url, {
-      method: 'PATCH',
+      method: "PATCH",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify(updateData),
+      body: JSON.stringify(payload),
     });
 
     const responseText = await response.text();
-
-    if (!response.ok) {
-      console.error('Failed to update student. Server response:', responseText);
-      try {
-        const errorData = JSON.parse(responseText);
-        const message = typeof errorData.message === 'string' ? errorData.message : 'An unknown error occurred.';
-        return { success: false, message, data: undefined };
-      } catch (e) {
-        return { success: false, message: 'Update failed: The server returned an unreadable error.', data: undefined };
-      }
-    }
-
+    let json: any = {};
     try {
-      const json = JSON.parse(responseText);
-      return {
-        success: true,
-        message: json.message || 'Student updated successfully.',
-        data: json.data || undefined,
-      };
+      json = JSON.parse(responseText);
     } catch (e) {
-      return { success: true, message: 'Student updated successfully.', data: undefined };
+      return {
+        status: response.status,
+        message: "Server returned an unreadable response.",
+      };
     }
+    
+    console.log('student response ', json)
+    
+    return {
+      data: json.data,
+      status: json.status ?? response.status,
+      message: json.message ?? "",
+      error: json.error,
+    };
 
   } catch (error) {
-    console.error('Network or unexpected error in updateStudent:', error);
-    return { success: false, message: 'An unexpected network error occurred.' };
+    console.error("Network or unexpected error in updateStudent:", error);
+    return { status: 400, message: "An unexpected network error occurred." };
   }
 }

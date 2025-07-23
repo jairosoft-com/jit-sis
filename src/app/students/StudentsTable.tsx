@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useTransition } from 'react';
 import { toast } from 'sonner';
-import { Student, updateStudent, getStudents, createStudent, CreateStudent } from './actions';
+import { Student, updateStudent, createStudent, CreateStudent } from './actions';
 import ViewStudentModal from './ViewStudentModal';
 import EditStudentModal from './EditStudentModal';
 import { Plus } from 'lucide-react';
@@ -28,23 +28,23 @@ export default function StudentsTable({ students }: StudentsTableProps) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('edit');
   const [tableStudents, setTableStudents] = useState<Student[]>(students);
+  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     setTableStudents(students);
   }, [students]);
 
   const filteredStudents = useMemo(() => {
-    return tableStudents
-      .filter(student => {
-        const searchLower = searchTerm.toLowerCase();
-        const name = `${student.first_name} ${student.last_name}`.toLowerCase();
-        return (
-          name.includes(searchLower) ||
-          student.student_id.toLowerCase().includes(searchLower) ||
-          student.email.toLowerCase().includes(searchLower) ||
-          student.program.toLowerCase().includes(searchLower)
-        );
-      });
+    const searchLower = searchTerm.trim().toLowerCase();
+    if (!searchLower) return tableStudents;
+
+    return tableStudents.filter((student) => {
+      const name = `${student.first_name} ${student.last_name}`.toLowerCase();
+      return (
+        name.includes(searchLower) ||
+        student.student_id.toLowerCase().includes(searchLower)
+      );
+    });
   }, [tableStudents, searchTerm]);
 
   const paginatedStudents = useMemo(() => {
@@ -83,26 +83,42 @@ export default function StudentsTable({ students }: StudentsTableProps) {
     setSelectedStudent(null);
   };
 
-  const fetchStudents = async () => {
-    const freshStudents = await getStudents();
-    setTableStudents(freshStudents);
-  };
+  // Removed fetchStudents as we update table locally without refetch
 
-  const handleSaveStudent = async (studentData: Student | CreateStudent) => {
-    let result;
-    if (modalMode === 'edit' && 'id' in studentData) {
-      result = await updateStudent(studentData as Student);
-    } else {
-      result = await createStudent(studentData as CreateStudent);
-    }
-
-    if (result.success) {
-      toast.success(result.message);
-      await fetchStudents();
-    } else {
-      toast.error(result.message);
-    }
-    handleCloseModals();
+  const handleSaveStudent = (studentData: Student | CreateStudent) => {
+    startTransition(async () => {
+      let result: any;
+      if (modalMode === "edit" && "id" in studentData) {
+        result = await updateStudent(studentData as Student);
+        if (result.status === 400 || result.error) {
+          toast.error(result.error ? "Something went wrong." : result.message);
+        } else if (result.status === 200 || result.status === 201) {
+          toast.success(result.message);
+          if (result.data) {
+            setTableStudents((prev) =>
+              prev.map((s) => (s.id === (selectedStudent?.id ?? result.data.id) ? result.data : s))
+            );
+          }
+          handleCloseModals();
+        } else {
+          toast.error(result.message || "An unknown error occurred.");
+        }
+      } else {
+        // Add
+        result = await createStudent(studentData as CreateStudent);
+        if (result.status === 400 || result.error) {
+          toast.error(result.error ? "Something went wrong." : result.message);
+        } else if (result.status === 201 || result.status === 200) {
+          toast.success(result.message);
+          if (result.data) {
+            setTableStudents((prev) => [result.data, ...prev]);
+          }
+          handleCloseModals();
+        } else {
+          toast.error(result.message || "An unknown error occurred.");
+        }
+      }
+    });
   };
 
   return (
