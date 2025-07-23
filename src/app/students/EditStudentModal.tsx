@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Student, CreateStudent } from './actions';
+import { Student, CreateStudent, getLastStudentId } from './actions';
 
 interface EditStudentModalProps {
   mode: 'add' | 'edit';
@@ -37,17 +37,64 @@ const defaultState: CreateStudent = {
   enrollment_date: new Date().toISOString().split('T')[0],
 };
 
+function incrementStudentId(studentId: string): string {
+  // Extract the numeric part and increment it
+  const match = studentId.match(/(\d+)$/);
+  if (!match) return studentId; // fallback if format is unexpected
+  
+  const num = parseInt(match[1], 10);
+  const nextNum = num + 1;
+  const paddedNextNum = nextNum.toString().padStart(match[1].length, '0');
+  
+  return studentId.replace(/\d+$/, paddedNextNum);
+}
+
 export default function EditStudentModal({ mode, student, isOpen, onClose, onSave }: EditStudentModalProps) {
   const [isPending, startTransition] = useTransition();
-  const [formData, setFormData] = useState<Partial<Student> & Partial<CreateStudent>>({});
-
+  const [isLoadingId, setIsLoadingId] = useState(false);
+  const [formData, setFormData] = useState<Partial<Student> & Partial<CreateStudent>>(() => ({
+    ...defaultState,
+    status: 'Active',
+    enrollment_date: new Date().toISOString().split('T')[0]
+  }));
+  
+  // Fetch next student ID when modal opens in add mode
   useEffect(() => {
+    const fetchNextStudentId = async () => {
+      if (!isOpen || mode !== 'add') return;
+      
+      setIsLoadingId(true);
+      try {
+        const result = await getLastStudentId();
+        if (result.data?.student_id) {
+          const nextId = incrementStudentId(result.data.student_id);
+          setFormData(prev => ({
+            ...prev,
+            student_id: nextId,
+            status: 'Active',
+            enrollment_date: new Date().toISOString().split('T')[0]
+          }));
+        }
+      } catch (error) {
+        console.error('Error fetching next student ID:', error);
+      } finally {
+        setIsLoadingId(false);
+      }
+    };
+
     if (isOpen) {
       if (mode === 'edit' && student) {
         setFormData(student);
-      } else {
-        setFormData(defaultState);
+      } else if (mode === 'add') {
+        fetchNextStudentId();
       }
+    } else {
+      // Reset form when modal is closed
+      setFormData({
+        ...defaultState,
+        status: 'Active',
+        enrollment_date: new Date().toISOString().split('T')[0]
+      });
     }
   }, [isOpen, mode, student]);
 
@@ -79,6 +126,8 @@ export default function EditStudentModal({ mode, student, isOpen, onClose, onSav
       return;
     }
 
+    if (isLoadingId) return;
+    
     startTransition(() => {
       onSave(formData as Student | CreateStudent);
     });
@@ -112,7 +161,21 @@ export default function EditStudentModal({ mode, student, isOpen, onClose, onSav
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="student_id" className="text-right">Student ID</Label>
-            <Input id="student_id" name="student_id" value={formData.student_id || ''} onChange={handleChange} className="col-span-3" />
+            <div className="relative col-span-3">
+              <Input 
+                id="student_id" 
+                name="student_id" 
+                value={formData.student_id || ''} 
+                onChange={handleChange} 
+                className="w-full"
+                disabled={true}
+              />
+              {isLoadingId && (
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+                </div>
+              )}
+            </div>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="program" className="text-right">Program</Label>
@@ -144,8 +207,8 @@ export default function EditStudentModal({ mode, student, isOpen, onClose, onSav
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isPending}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={isPending}>
+          <Button variant="outline" onClick={onClose} disabled={isPending || isLoadingId}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={isPending || isLoadingId}>
             {isPending ? (
             <span className="flex items-center">
               <svg
