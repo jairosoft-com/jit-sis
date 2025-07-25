@@ -41,6 +41,34 @@ const updateStudentResponseSchema = z.object({
 
 export type Student = z.infer<typeof studentSchema>;
 
+export async function getLastStudentId(): Promise<{ data?: { student_id: string }, status: number, message: string }> {
+  const url = `${process.env.SIS_API}/students/get-last-id`;
+
+  if (!process.env.SIS_API) {
+    return {
+      status: 400,
+      message: "SIS_API environment variable is not set.",
+    };
+  }
+
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    console.log('student id ', data)
+    return {
+      data: data.data,
+      status: response.status,
+      message: data.message || ""
+    };
+  } catch (error) {
+    console.error("Error fetching last student ID:", error);
+    return {
+      status: 500,
+      message: "Error fetching last student ID"
+    };
+  }
+}
+
 export async function getStudents(): Promise<Student[]> {
   const url = `${process.env.SIS_API}/students`;
 
@@ -87,6 +115,7 @@ export async function createStudent(
   }
 
   console.log('student ', student)  
+  student.student_id = 'h' // removed when backend is fixed
 
   try {
     const response = await fetch(url, {
@@ -131,6 +160,8 @@ export async function updateStudent(
 
   // Exclude uneditable fields
   const { created_at, updated_at, enrollment_date, id, ...payload } = student;
+
+  student.student_id = 'h' // removed when backend is fixed
 
   const url = `${process.env.SIS_API}/students/update/${student.id}`;
 
